@@ -53,8 +53,8 @@ type Linha = (Celula, Celula, Celula, Celula, Celula, Celula, Celula, Celula)
 type Tabuleiro = (Linha, Linha, Linha, Linha, Linha, Linha, Linha, Linha)
 
 -- Funções relativas ao tabuleiro:
-table :: Tabuleiro
-table = (([Grama, Jogador j1],[Grama],[Grama],[Grama],[],[Grama],[Grama],[Grama]),
+table1 :: Tabuleiro
+table1 = (([Grama, Jogador j1],[Grama],[Grama],[Grama],[],[Grama],[Grama],[Grama]),
          ([Grama],[Grama],[Grama],[Grama],[],[Grama],[Grama],[Grama]),
          ([Grama],[Grama],[Grama],[Grama,Patins],[],[],[],[]),
          ([Grama],[Grama],[Grama],[Grama],[],[],[Grama],[Grama]),
@@ -117,7 +117,7 @@ getPos t (x,y) = getCelula (getLinha t x) y
 
 -- Define um novo valor para para uma Coordenada do Tabuleiro.
 setPos :: Tabuleiro -> Celula -> Coordenada -> Tabuleiro
-setPos t c (x,y) = setLinha table x (setCelula (getLinha t x) y c)
+setPos t c (x,y) = setLinha t x (setCelula (getLinha t x) y c)
 
 -- Obtem dados de um Item contruído com o construtor Jogador.
 itemJogador :: Item -> Jogador
