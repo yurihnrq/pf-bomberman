@@ -1,21 +1,30 @@
+-- Construção do Jogador
 type Mochila = ((Item, Int), (Item, Int), (Item, Int))
 data Direcao = N | S | L | O deriving (Show, Eq, Enum, Ord)
 type Coordenada = (Int, Int)
-
-type Jogador = (String,Coordenada,Direcao,Mochila)
+type ID = String
+type Jogador = (ID,Coordenada,Direcao,Mochila)
 
 -- Funções relativas ao Jogador:
 -- Retorna ID do Jogador
-getID :: Jogador -> String
+getID :: Jogador -> ID
 getID (id,_,_,_) = id
 
 -- Retorna Coordenada do Jogador
 getCoord :: Jogador -> Coordenada
 getCoord (_,c,_,_) = c
 
+-- Define um novo valor de Coordenada para o Jogador.
+setCoord :: Jogador -> Coordenada -> Jogador
+setCoord (id,_,d,m) c = (id,c,d,m)
+
 -- Retorna Direcao do Jogador
 getDir :: Jogador -> Direcao
 getDir (_,_,d,_) = d
+
+-- Define novo valor de Direcao para o Jogador
+setDir :: Jogador -> Direcao -> Jogador
+setDir (id,c,_,m) dir = (id,c,dir,m)
 
 -- Retorna Mochila do Jogador
 getBag :: Jogador -> Mochila
@@ -33,36 +42,37 @@ incItem j i
     | otherwise = error "Valor inválido"
     where ((i1,q1),(i2,q2),(i3,q3)) = getBag j
 
--- Define novo valor de Direcao para o Jogador
-setDir :: Jogador -> Direcao -> Jogador
-setDir (id,c,_,m) dir = (id,c,dir,m)
-
 -- Jogadores iniciais.
 j1 :: Jogador
-j1 = ("Jogador_1", (1,1), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
+j1 = ("Jogador 1", (1,1), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
 
 j2 :: Jogador
-j2 = ("Jogador_2", (6,5), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
+j2 = ("Jogador 2", (1,8), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
 
 j3 :: Jogador
-j3 = ("Jogador_3", (8,3), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
+j3 = ("Jogador 3", (8,1), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
 
+j4 :: Jogador
+j4 = ("Jogador 4", (8,8), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
+
+-- Construção do Tabuleiro
 data Item = Grama | Patins | Arremesso | Bomba | Jogador Jogador deriving (Show, Eq, Ord)
 type Celula = [Item] 
 type Linha = (Celula, Celula, Celula, Celula, Celula, Celula, Celula, Celula)
 type Tabuleiro = (Linha, Linha, Linha, Linha, Linha, Linha, Linha, Linha)
 
--- Funções relativas ao tabuleiro:
+-- Tabuleiro Inicial
 table1 :: Tabuleiro
-table1 = (([Grama, Jogador j1],[Grama],[Grama],[Grama],[],[Grama],[Grama],[Grama]),
-         ([Grama],[Grama],[Grama],[Grama],[],[Grama],[Grama],[Grama]),
+table1 = (([Grama, Jogador j1],[Grama],[Grama],[Grama],[],[Grama],[Grama],[Grama,Jogador j2]),
+         ([Grama, Arremesso],[Grama],[Grama],[Grama],[],[Grama],[Grama],[Grama]),
          ([Grama],[Grama],[Grama],[Grama,Patins],[],[],[],[]),
          ([Grama],[Grama],[Grama],[Grama],[],[],[Grama],[Grama]),
          ([],[Grama,Arremesso],[Grama],[Grama],[Grama],[],[Grama],[Grama]),
-         ([],[],[Grama],[Grama],[Grama,Jogador j2],[Grama],[],[]),
+         ([],[],[Grama],[Grama],[Grama],[Grama],[],[]),
          ([],[],[Grama,Arremesso],[Grama],[Grama],[Grama],[],[]),
-         ([Grama],[Grama],[Grama,Jogador j3],[Grama],[Grama],[Grama],[Grama,Patins],[Grama]))
+         ([Grama,Jogador j3],[Grama],[Grama],[Grama],[Grama],[Grama],[Grama,Patins],[Grama,Jogador j4]))
 
+-- Funções relativas ao tabuleiro:
 -- Obter valor de uma Linha.
 getLinha :: Tabuleiro -> Int -> Linha
 getLinha (l,_,_,_,_,_,_,_) 1 = l
@@ -149,7 +159,8 @@ removeJogador (h:t)
     | checkJogador h = t
     | otherwise = h:(removeJogador t)
 
--- Insere um Jogador em uma Celula
+-- Insere um Jogador em uma Celula.
+-- Se a Celula possui um Item, ele é armazenado na Mochila do Jogador.
 insertJogador :: Celula -> Jogador -> Celula
 insertJogador [] _ = []
 insertJogador l j
@@ -167,17 +178,58 @@ insertJogador l j
 -- Quanto menor o valor de y, mais ao Oeste.
 moveJogador :: Tabuleiro -> Coordenada -> Direcao -> Tabuleiro
 moveJogador t c@(x,y) d 
-    | d == N && celulaValida (getPos t (x-1,y)) = setPos table' celDNorte ((x-1),y)
-    | d == S && celulaValida (getPos t (x+1,y)) = setPos table' celDSul ((x+1),y)
-    | d == L && celulaValida (getPos t (x,y+1)) = setPos table' celDLeste (x,(y+1))
-    | d == O && celulaValida (getPos t (x,y-1)) = setPos table' celDOeste (x,(y-1))
+    | d == N && celulaValida (getPos t (x-1,y)) = setPos table' celDNorte (x-1,y)
+    | d == S && celulaValida (getPos t (x+1,y)) = setPos table' celDSul (x+1,y)
+    | d == L && celulaValida (getPos t (x,y+1)) = setPos table' celDLeste (x,y+1)
+    | d == O && celulaValida (getPos t (x,y-1)) = setPos table' celDOeste (x,y-1)
     | otherwise = error "Parâmetros inválidos"
     where 
-        jog  = getJogador (getPos t c)
-        celO = removeJogador (getPos t c)
-        celDNorte = insertJogador (getPos t (x-1,y)) jog
-        celDSul   = insertJogador (getPos t (x+1,y)) jog
-        celDLeste = insertJogador (getPos t (x,y+1)) jog
-        celDOeste = insertJogador (getPos t (x,y-1)) jog
-        table' = setPos t celO c
+        jog  = setDir (getJogador (getPos t c)) d -- Modifica a Direcao para qual o Jogador olha para a Direcao do movimento.
+        celO = removeJogador (getPos t c) -- Obtém uma versão da Celula de origem sem o Jogador.
+        celDSul   = insertJogador (getPos t (x+1,y)) (setCoord jog (x+1,y)) -- Celula de destino com o Jogador que andou na Direcao S (Sul).
+        celDNorte = insertJogador (getPos t (x-1,y)) (setCoord jog (x-1,y)) -- Celula de destino com o Jogador que andou na Direcao N (Norte).
+        celDLeste = insertJogador (getPos t (x,y+1)) (setCoord jog (x,y+1)) -- Celula de destino com o Jogador que andou na Direcao L (Leste).
+        celDOeste = insertJogador (getPos t (x,y-1)) (setCoord jog (x,y-1)) -- Celula de destino com o Jogador que andou na Direcao O (Oeste).
+        table' = setPos t celO c -- Atualiza a Celula de origem no Tabuleiro.
 
+-- Coloca uma Bomba na frente do Jogador que está na Coordenada informada.
+setBomba :: Tabuleiro -> Coordenada -> Tabuleiro
+setBomba t c@(x,y) 
+    | head (reverse celD) < Patins = setPos t celR (coordDir c dirJ)
+    | otherwise = error "Não é possível colocar bomba nesse local"
+    where
+        dirJ = getDir (getJogador (getPos t c)) -- Obtem a Direcao do Jogador na Coordenada informada.
+        celD = getPos t (coordDir c dirJ) -- Obtem a Celula onde a Bomba deve ser colocada.
+        celR = reverse (Bomba:celD) -- Coloca a Bomba na Celula de destino.
+        coordDir (x,y) d -- Função para obter a Coordenada em que a Bomba deve ser colocada baseada na Direcao para qual o Jogador está olhando.
+            | d == N = (x-1,y)
+            | d == S = (x+1,y)
+            | d == L = (x,y+1)
+            | d == O = (x,y-1)
+            | otherwise = error "Direção inválida"
+
+-- Explode a Bomba que se encontra na Coordenada informada.
+-- Foi considerado um raio de explosão de 2 casas. Essa é a capacidade da Bomba na Mochila dos Jogadores. 
+-- Não há item que incremente o raio de explosão da Bomba.
+-- Para a implementação de um Item que incremente o raio de explosão, seria necessário criar um construtor Bomba Int em data Item.
+explodeBomba :: Tabuleiro -> Coordenada -> Tabuleiro
+explodeBomba t c
+    | head (reverse cel) == Bomba = explode t c 0
+    | otherwise = error "Não há bomba nessa Coordenada"
+    where
+        cel = getPos t c -- Obtem a Celula que contém a Bomba.
+        coordValida (x',y') -- Função que verifica se uma Coordenada (x,y) pertence ao Tabuleiro de tamanho 8x8.
+            | x' > 0 && x' < 9 && y' > 0 && y' < 9 = True
+            |otherwise = False
+        explode table c'@(x,y) i -- Função que altera o Tabuleiro conforme necessário para realizar o "estrago" da explosão.
+            | i > 9 = table -- Condição para encerrar a função. Os 9 passos necessários já foram realizados.
+            | coordValida (x+1,y) && not (null (getPos table (x+1,y))) && i == 0 = explode (setPos table [Grama] (x+1,y)) c' (i+1)
+            | coordValida (x+2,y) && not (null (getPos table (x+2,y))) && i == 1 = explode (setPos table [Grama] (x+2,y)) c' (i+1)
+            | coordValida (x,y+1) && not (null (getPos table (x,y+1))) && i == 2 = explode (setPos table [Grama] (x,y+1)) c' (i+1)
+            | coordValida (x,y+2) && not (null (getPos table (x,y+2))) && i == 3 = explode (setPos table [Grama] (x,y+2)) c' (i+1)
+            | coordValida (x-1,y) && not (null (getPos table (x-1,y))) && i == 4 = explode (setPos table [Grama] (x-1,y)) c' (i+1)
+            | coordValida (x-2,y) && not (null (getPos table (x-2,y))) && i == 5 = explode (setPos table [Grama] (x-2,y)) c' (i+1)
+            | coordValida (x,y-1) && not (null (getPos table (x,y-1))) && i == 6 = explode (setPos table [Grama] (x,y-1)) c' (i+1)
+            | coordValida (x,y-2) && not (null (getPos table (x,y-2))) && i == 7 = explode (setPos table [Grama] (x,y-2)) c' (i+1)
+            | coordValida c' && not (null (getPos table c')) && i == 8 = explode (setPos table [Grama] c') c' (i+1)
+            | otherwise = explode table c' (i+1) -- Caso uma condição acima não seja satisfeita, ainda é necessário percorrer as Coordenadas restantes, por isso a função não encerra aqui.
