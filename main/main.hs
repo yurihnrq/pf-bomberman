@@ -1,6 +1,6 @@
 -- Construção do Jogador
 type Mochila = ((Item, Int), (Item, Int), (Item, Int))
-data Direcao = N | S | L | O deriving (Show, Eq, Enum, Ord)
+data Direcao = N | S | L | O deriving (Show, Eq, Enum, Ord, Read)
 type Coordenada = (Int, Int)
 type ID = String
 type Jogador = (ID,Coordenada,Direcao,Mochila)
@@ -57,7 +57,7 @@ j4 = ("Jogador 4", (8,8), S, ((Patins, 0),(Arremesso, 0),(Bomba, 2)))
 
 -- Construção do Tabuleiro
 data Item = Grama | Patins | Arremesso | Bomba | Jogador Jogador deriving (Show, Eq, Ord)
-type Celula = [Item] 
+type Celula = [Item]
 type Linha = (Celula, Celula, Celula, Celula, Celula, Celula, Celula, Celula)
 type Tabuleiro = (Linha, Linha, Linha, Linha, Linha, Linha, Linha, Linha)
 
@@ -132,6 +132,7 @@ setPos t c (x,y) = setLinha t x (setCelula (getLinha t x) y c)
 -- Obtem dados de um Item contruído com o construtor Jogador.
 itemJogador :: Item -> Jogador
 itemJogador (Jogador x) = x
+itemJogador _ = error "Não é jogador"
 
 -- Verificar se um Item é do tipo Jogador.
 checkJogador :: Item -> Bool
@@ -157,16 +158,16 @@ removeJogador :: Celula -> Celula
 removeJogador [] = []
 removeJogador (h:t)
     | checkJogador h = t
-    | otherwise = h:(removeJogador t)
+    | otherwise = h:removeJogador t
 
 -- Insere um Jogador em uma Celula.
 -- Se a Celula possui um Item, ele é armazenado na Mochila do Jogador.
 insertJogador :: Celula -> Jogador -> Celula
 insertJogador [] _ = []
 insertJogador l j
-    | hr == Arremesso = reverse ((Jogador (incItem j Arremesso)):tr)
+    | hr == Arremesso = reverse (Jogador (incItem j Arremesso):tr)
     | hr == Patins = reverse (Jogador (incItem j Patins):tr)
-    | hr == Grama = hr:([Jogador j])
+    | hr == Grama = hr:[Jogador j]
     | otherwise = error "Celula não é válida"
     where rl = reverse l
           hr = head rl
@@ -177,13 +178,13 @@ insertJogador l j
 -- Quanto menor o valor de x, mais ao Norte.
 -- Quanto menor o valor de y, mais ao Oeste.
 moveJogador :: Tabuleiro -> Coordenada -> Direcao -> Tabuleiro
-moveJogador t c@(x,y) d 
+moveJogador t c@(x,y) d
     | d == N && celulaValida (getPos t (x-1,y)) = setPos table' celDNorte (x-1,y)
     | d == S && celulaValida (getPos t (x+1,y)) = setPos table' celDSul (x+1,y)
     | d == L && celulaValida (getPos t (x,y+1)) = setPos table' celDLeste (x,y+1)
     | d == O && celulaValida (getPos t (x,y-1)) = setPos table' celDOeste (x,y-1)
     | otherwise = error "Parâmetros inválidos"
-    where 
+    where
         jog  = setDir (getJogador (getPos t c)) d -- Modifica a Direcao para qual o Jogador olha para a Direcao do movimento.
         celO = removeJogador (getPos t c) -- Obtém uma versão da Celula de origem sem o Jogador.
         celDSul   = insertJogador (getPos t (x+1,y)) (setCoord jog (x+1,y)) -- Celula de destino com o Jogador que andou na Direcao S (Sul).
@@ -194,8 +195,8 @@ moveJogador t c@(x,y) d
 
 -- Coloca uma Bomba na frente do Jogador que está na Coordenada informada.
 setBomba :: Tabuleiro -> Coordenada -> Tabuleiro
-setBomba t c@(x,y) 
-    | head (reverse celD) < Patins = setPos t celR (coordDir c dirJ)
+setBomba t c@(x,y)
+    | last celD < Patins = setPos t celR (coordDir c dirJ)
     | otherwise = error "Não é possível colocar bomba nesse local"
     where
         dirJ = getDir (getJogador (getPos t c)) -- Obtem a Direcao do Jogador na Coordenada informada.
@@ -214,7 +215,7 @@ setBomba t c@(x,y)
 -- Para a implementação de um Item que incremente o raio de explosão, seria necessário criar um construtor Bomba Int em data Item.
 explodeBomba :: Tabuleiro -> Coordenada -> Tabuleiro
 explodeBomba t c
-    | head (reverse cel) == Bomba = explode t c 0
+    | last cel == Bomba = explode t c 0
     | otherwise = error "Não há bomba nessa Coordenada"
     where
         cel = getPos t c -- Obtem a Celula que contém a Bomba.
@@ -233,3 +234,115 @@ explodeBomba t c
             | coordValida (x,y-2) && not (null (getPos table (x,y-2))) && i == 7 = explode (setPos table [Grama] (x,y-2)) c' (i+1)
             | coordValida c' && not (null (getPos table c')) && i == 8 = explode (setPos table [Grama] c') c' (i+1)
             | otherwise = explode table c' (i+1) -- Caso uma condição acima não seja satisfeita, ainda é necessário percorrer as Coordenadas restantes, por isso a função não encerra aqui.
+
+main :: IO ()
+main = do
+    putStr "\n"
+    printTabuleiro table1 1
+    loop table1
+
+loop :: Tabuleiro -> IO ()
+loop table = do
+    putStr "-- Bomberman --\n"
+    putStr "M - Mover jogador\n"
+    putStr "C - Colocar bomba\n"
+    putStr "E - Expodir bomba\n"
+    putStr "!sair - Sair do jogo\n"
+    putStr ">> "
+    op <- getLine
+    if op == "!sair"
+        then putStr "Você saiu do jogo.\n"
+    else if op == "M"
+        then moveJogadorIO table
+    else if op == "C"
+        then setBombaIO table
+    else if op == "E"
+        then explodeBombaIO table
+    else do
+        putStr "Opção inválida.\n"
+        loop table
+
+moveJogadorIO :: Tabuleiro -> IO ()
+moveJogadorIO table = do
+    putStr "Insira a coordenada do jogador\n"
+    putStr "x: "
+    x <- getLine 
+    putStr "y: "
+    y <- getLine
+    putStr "Insira a direção para qual ele deve andar (N,S,L,O): "
+    dir <- getLine
+    putStr "\n"
+    printTabuleiro (moveJogador table (read x::Int, read y::Int) (read dir::Direcao)) 1
+    loop $ moveJogador table (read x::Int, read y::Int) (read dir::Direcao)
+
+setBombaIO :: Tabuleiro -> IO ()
+setBombaIO table = do
+    putStr "Insira a coordenada do jogador\n"
+    putStr "x: "
+    x <- getLine 
+    putStr "y: "
+    y <- getLine
+    putStr "\n"
+    printTabuleiro (setBomba table (read x::Int, read y::Int)) 1
+    loop $ setBomba table (read x::Int, read y::Int)
+
+explodeBombaIO :: Tabuleiro -> IO ()
+explodeBombaIO table = do
+    putStr "Insira a coordenada da bomba\n"
+    putStr "x: "
+    x <- getLine 
+    putStr "y: "
+    y <- getLine
+    putStr "\n"
+    printTabuleiro (explodeBomba table (read x::Int, read y::Int)) 1
+    loop $ explodeBomba table (read x::Int, read y::Int)
+
+printCelula :: Celula -> Int -> IO ()
+printCelula cel 8
+    | null cel = putStr "( )\n"
+    | checkJogador $ last cel = putStr $ getID (getJogador cel) ++ "\n"
+    | otherwise = putStr $ show (last cel) ++ "\n"
+printCelula cel _ 
+    | null cel = putStr "( ) | "
+    | checkJogador $ last cel = putStr $ getID (getJogador cel) ++ " | "
+    | otherwise = putStr $ show (last cel) ++ " | "
+
+printLinha' :: Linha -> Int -> IO ()
+printLinha' (c,_,_,_,_,_,_,_) 1 = printCelula c 1
+printLinha' (_,c,_,_,_,_,_,_) 2 = printCelula c 2
+printLinha' (_,_,c,_,_,_,_,_) 3 = printCelula c 3
+printLinha' (_,_,_,c,_,_,_,_) 4 = printCelula c 4
+printLinha' (_,_,_,_,c,_,_,_) 5 = printCelula c 5
+printLinha' (_,_,_,_,_,c,_,_) 6 = printCelula c 6
+printLinha' (_,_,_,_,_,_,c,_) 7 = printCelula c 7
+printLinha' (_,_,_,_,_,_,_,c) 8 = printCelula c 8
+printLinha' _ _ = error "Parâmetros inválidos"
+
+printLinha :: Linha -> Int -> IO ()
+printLinha l i = do
+    if i >= 1 && i <= 8
+        then do
+            printLinha' l i
+            printLinha l (i+1)
+    else
+        putStr ""
+
+printTabuleiro' :: Tabuleiro -> Int -> IO ()
+printTabuleiro' (l,_,_,_,_,_,_,_) 1 = printLinha l 1
+printTabuleiro' (_,l,_,_,_,_,_,_) 2 = printLinha l 1
+printTabuleiro' (_,_,l,_,_,_,_,_) 3 = printLinha l 1
+printTabuleiro' (_,_,_,l,_,_,_,_) 4 = printLinha l 1
+printTabuleiro' (_,_,_,_,l,_,_,_) 5 = printLinha l 1
+printTabuleiro' (_,_,_,_,_,l,_,_) 6 = printLinha l 1
+printTabuleiro' (_,_,_,_,_,_,l,_) 7 = printLinha l 1
+printTabuleiro' (_,_,_,_,_,_,_,l) 8 = printLinha l 1
+printTabuleiro' _ _ = error "Parâmetros inválidos"
+
+printTabuleiro :: Tabuleiro -> Int -> IO ()
+printTabuleiro t i = do
+    if i >= 1 && i <= 8
+        then do
+            printTabuleiro' t i
+            printTabuleiro t (i+1)
+    else
+        putStr "\n"
